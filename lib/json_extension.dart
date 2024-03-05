@@ -1,12 +1,22 @@
+import 'dart:typed_data';
+
 import 'type_def_json.dart';
 
 extension JsonExtension on Json {
 
   double? tryGetDouble(String key){
-    if (!containsKey(key)) {
-      return null;
+    final value = this[key];
+    
+    if (value is num) {
+      return value.toDouble();
     }
-    return getDouble(key);
+    if (value is String) {
+      return double.parse(value);
+    }
+    if (value is bool) {
+      return value ? 0.0 : 1.0;
+    }
+    return null;
   }
 
   Json? tryGetChild(String key){
@@ -36,6 +46,14 @@ extension JsonExtension on Json {
 
   List<Json> getObjects(String key) => getList<Json>(key);
 
+  Uint8List getUint8List(String key) => Uint8List.fromList(getListInt(key));
+
+  Map<String, int> getMapStringInt(String key) =>
+      getMap<String, int>(key);
+
+  Map<T, J> getMap<T, J>(String key) =>
+      getChild(key).cast<T, J>();
+
   List<int> getListInt(String key) => getList<int>(key);
 
   List<T> getList<T>(String key){
@@ -59,23 +77,23 @@ extension JsonExtension on Json {
     if (!containsKey(key)) {
       throw Exception("json.getDouble($key). No key");
     }
-    final value = this[key];
-    if (value is num) {
-      return value.toDouble();
-    }
-    if (value is String) {
-      return double.parse(value);
-    }
-    if (value is bool) {
-      return value ? 0.0 : 1.0;
-    }
-    throw Exception("could not parse $value to double");
+    return tryGetDouble(key) ??
+        (throw Exception("could not parse ${this[key]} to double"));
   }
 
   int getInt(String key){
     if (!containsKey(key)) {
       throw Exception("json.getInt($key). No key");
     }
+    return 
+        tryGetInt(key) ?? 
+        (throw Exception("could not parse ${this[key]} to int"));
+  }
+
+  String? tryGetString(String key) =>
+      containsKey(key) ? getString(key) : null;
+
+  int? tryGetInt(String key) {
     final value = this[key];
     if (value is num) {
       return value.toInt();
@@ -86,14 +104,8 @@ extension JsonExtension on Json {
     if (value is bool){
       return value ? 1 : 0;
     }
-    throw Exception("could not parse $value to int");
+    return null;
   }
-
-  String? tryGetString(String key) =>
-      containsKey(key) ? getString(key) : null;
-
-  int? tryGetInt(String key) =>
-      containsKey(key) ? getInt(key) : null;
 
   bool? tryGetBool(String key) =>
       containsKey(key) ? getBool(key) : null;
@@ -134,5 +146,34 @@ extension JsonExtension on Json {
     }
 
     throw Exception("could not parse value $value to bool");
+  }
+
+  Float32List getFloat32List(String key) =>
+      tryGetFloat32List(key) ?? (throw Exception('$this.getFloat32List($key)'));
+
+  Float32List? tryGetFloat32List(String name){
+    final doubles = tryGetListDouble(name);
+    if (doubles == null){
+      return null;
+    }
+    return Float32List.fromList(doubles);
+  }
+
+  List<double>? tryGetListDouble(String key) =>
+      tryGetListNum(key)?.map((e) => e.toDouble()).toList();
+
+  List<num>? tryGetListNum(String key){
+     final value = this[key];
+     if (value == null){
+       return null;
+     }
+     if (value is! List){
+       return null;
+     }
+     try {
+       return value.cast<num>();
+     } catch (e){
+       return null;
+     }
   }
 }
